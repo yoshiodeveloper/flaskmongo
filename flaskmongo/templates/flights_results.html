@@ -1,0 +1,22 @@
+<h2>Voos encontrados</h2>
+
+<table class="table table-sm table-hover table-striped">
+    <thead>
+        <tr>
+            <th scope="col">De</th>
+            <th scope="col">Para</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if flights %}
+            {% for flight in flights %}
+                <tr id="flight_{{flight._id}}_id">
+                    <td>{{ flight.from_airport.city }} - {{ flight.from_airport.name }}</td>
+                    <td>{{ flight.to_airport.city }} - {{ flight.to_airport.name }}</td>
+                </tr>
+            {% endfor %}
+        {% else %}
+            <tr><td colspan="2" class="alert alert-warning">Sem resultados.</td></tr>
+        {% endif %}
+    </tbody>
+</table>

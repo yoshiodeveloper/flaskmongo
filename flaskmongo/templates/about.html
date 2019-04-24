@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block extracss %}
+<link rel="stylesheet" href="/static/libs/highlight/9.15.6/styles/default.css">
+{% endblock %}
+
+{% block content %}
+
+<h1>Sobre</h1>
+
+<div class="mt-3">
+
+    <p>A tela principal permite buscar por voos disponíveis utilizando dois campos digitável "De" e "Para".
+        Conforme o usuário digita nos campos um sistema de sugestão exibe os voos/conexões disponíveis em tempo real.
+        Caso um voo não sejá sugerido significa que ele não está disponível.</p>
+
+    <p>Para a simulação foram utilizados 29 aeroportos selecionados com base na importância nacional e internacional.
+        Foi definido para o trabalho que todos esses aeroportos possuem conexões com todos os outros, independente se existem ou não de fato essas conexões.
+    </p>
+
+    <p>Neste cenário fictício foram gerados 812 registros de voos/conexões possíveis.</p>
+
+    <p>Exemplo de conexões de Congonhas:</p>
+    <ul>
+        <li>Congonhas(SP) <i class="fas fa-long-arrow-alt-right"></i> Viracopos(SP)</li>
+        <li>Congonhas(SP) <i class="fas fa-long-arrow-alt-right"></i> Galeão(RJ)</li>
+        <li>Congonhas(SP) <i class="fas fa-long-arrow-alt-right"></i> Guarulhos(SP)</li>
+        <li>Congonhas(SP) <i class="fas fa-long-arrow-alt-right"></i> Santos Dumont(RJ)</li>
+        <li>...</li>
+    </ul>
+    
+    <p>A modelagem no Mongo utiliza duas collections para representar os aeroportos ("airports") e os voos ("flights").</p>
+    
+    <hr>
+
+    <h4>Collection <code>airports</code></h4>
+
+    <p>A collection "airports" contém os dados dos aeroportos.</p>
+    
+    <p>Exemplo:</p>
+    
+<pre><code class="javascript">{
+    "_id": "2618",  // ID internacional do aeroporto
+    "name": "Congonhas Airport",
+    "city": "Sao Paulo",
+    "country": "Brazil"
+}</code></pre>
+    
+    <ul>
+        <li>A base de dados de aeroportos original foi extraída do site <a href="https://openflights.org/data.html">openflights.org</a>.</li>
+        <li>Como chave primária foi utilizado o próprio ID internacional do aeroporto.</li>
+    </ul>
+
+    <hr>
+
+    <h4>Collection <code>flights</code></h4>
+
+    <p>A collection "flights" contém as conexões possíveis entre os aeroportos e se estão disponíveis no momento.</p>
+    
+    <p>Exemplo de um registro de "flights" que representa a conexão a partir de Congonhas até Santos Dumont:</p>
+    
+<pre><code class="javascript">{
+    "_id": ObjectId("507f191e810c19729de860ea"),  // ID único gerado pelo mongo.
+    "from_airport": {  // Aeroporto de partida.
+        "_id": "2618",
+        "name": "Congonhas Airport",
+        "city": "Sao Paulo",
+        "country": "Brazil",
+        "searchable": "sao paulo congonhas airport;2618"
+    },
+    "to_airport": {  // Aeroporto de destino.
+        "_id": "2612",
+        "name": "Santos Dumont Airport",
+        "city": "Rio de Janeiro",
+        "country": "Brazil",
+        "searchable": "rio de janeiro santos dumont airport;2612"
+    },
+    "available": true  // Indica se este voo está disponível ou não.
+}</code></pre>
+    
+    <ul>
+        <li>Os campos <code>from_airport</code> e <code>to_airport</code> são <strong>objetos</strong> e representam os aeroportos de partida e destino.</li>
+        <li>O campo <code>available</code> indica se este voo/conexão está disponível ou não.</li>
+        <li>Os campos <code>searchable</code> de <code>from_airport</code> e <code>to_airport</code> são os campos mais importantes para a funcionalidade de sugestão.</li>
+        <li>Em especial repare que o campo <code>searchable</code> possui também o ID do registro no final da <code>string</code> separado por um ";".</li>
+    </ul>
+
+    <hr>
+
+    <h4>Campo <code>searchable</code></h4>
+    
+    <p>Este é o campo mais importante do sistema e é utilizado para realizar as sugestões de voos. Ele é gerado com base no nome da cidade e do aeroporto. Para otimizar as buscas este texto é "normalizado", onde são removidos os acentos de depois convertidos para  minúsculas.</p>
+
+    <p>Quando o usuário digita uma letra no campo "De" é feito um consulta por "prefixo" no campo <code>from_airport.searchable</code>. Também é indicado que o campo <code>available</code> deve possuir o valor <code>true</code>.</p>
+
+    <p>Por exemplo, se a letra digitada for "s" o sistema realiza uma busca como "s*" neste campo. É informado ao MongoDB que obrigatoriamente deve começar com a letra "s". Outro ponto importante é que o texto pesquisado pelo usupario também passa pelo processo de normalização antes da pesquisa.</p>
+
+    <p>O MongoDB retorna todos os registros de <code>flights</code> com essas condições. Agora é necessário realizar uma segunda operação no MongoDB chamado de <a href="https://docs.mongodb.com/manual/aggregation/">aggregation</a>.</p>
+
+    <p>A agregação irá retornar somente os valores únicos de <code>from_airport.searchable</code>. Neste tipo de agregação serão <strong>perdidos</strong> todos os outros dados, como os campos "_id", "from_airport", "to_airport" e "available".</p>
+
+    <p>Por exemplo, serão retornados somente estes dados:</p>
+
+<pre><code class="javascript">[
+    "sao paulo congonhas airport;2618",
+    "sao paulo guarulhos governador andre franco montoro international airport;2564",
+    "seoul incheon international airport;3930",
+    "shanghai shanghai pudong international airport;3406"
+]</code></pre>
+
+    <p>Como estes valores não são "atraentes" para exibição (pois foram normalizados) será realizado uma consulta em <code>airports</code> para coletar os nomes dos aeroportos.</p>
+
+    <p>Como o campo <code>from_airport._id</code> foi perdido durante a agregação, será utilizado o próprio <code>from_airport.searchable</code> para encontrar o aeroporto, pois essa <code>string</code> contém em seu final o ID do aeroporto. O texto é quebrado no ";" e o valor do ID é extraído.</p>
+
+    <p>Agora é possível consultar os aeroportos e montar uma lista de sugestões mais "atraente".</p>
+
+    <p>Por exemplo:</p>
+
+<pre><code class="javascript">[
+    "Sao Paulo - Congonhas Airport",
+    "Sao Paulo - Guarulhos - Governador André Franco Montoro International Airport",
+    "Seoul - Incheon International Airport",
+    "Shanghai - Shanghai Pudong International Airport",
+    "Singapore - Singapore Changi Airport"
+]</code></pre>
+
+    <p>Esses valores são retornado para a interface onde são exibidos como forma de sugestão. O usuário pode selecionar uma das sugestões ou continuar digitando, neste caso o processo de pesquisa se repete.</p>
+
+</div>
+
+    <h4>Índices em <code>searchable</code></h4>
+
+    <p>Um ponto importante é que os campos <code>from_airport.searchable</code> e <code>to_airport.searchable</code> precisam possuir <a href="https://docs.mongodb.com/manual/indexes/">índices</a> no MongoDB.</p>
+
+    <p>As consultas por prefixos textuais conseguem fazer uso de índices no MongoDB, diminuindo drasticamente o tempo das consultas.</p>
+
+    <p>Neste tipo de consulta o valor pesquisado deve se encontrado no começo do valor do campo. Nunca no meio ou no final.</p>
+
+    <p>Exemplos:</p>
+
+    <table class="table table-sm table-hover">
+        <thead>
+            <tr>
+                <th scope="col">Valor consultado</th>
+                <th scope="col">Valor do campo</th>
+                <th scope="col">É prefixo?</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>sa</td>
+                <td>sao paulo congonhas airport</td>
+                <td>sim</td>
+            </tr>
+            <tr>
+                <td>sao pau</td>
+                <td>sao paulo congonhas airport</td>
+                <td>sim</td>
+            </tr>
+            <tr>
+                <td>sao paulo con</td>
+                <td>sao paulo congonhas airport</td>
+                <td>sim</td>
+            </tr>
+            <tr>
+                <td>con</td>
+                <td>sao paulo congonhas airport</td>
+                <td>não</td>
+            </tr>
+            <tr>
+                <td>airport</td>
+                <td>sao paulo congonhas airport</td>
+                <td>não</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p>É extremamente importante entender como utilizar esta estratégia, principalmente no âmbito do Big Data. Uma consulta + índices mal projetados podem inviabilizar esta solução ou até mesmo derrubar um "cluster" de MongoDB.</p>
+
+    <hr>
+
+    <h4>Big Data</h4>
+
+    <p>Apenas como curiosidade, existem mais de 49 mil aeroportos no mundo. Se em teoria cada um deles possuísse conexão com todos os demais, estaríamos falando de mais de <strong>2,4 bilhões</strong> de conexões ou registros em nossa collection <code>flights</code>. Com uma segunda escala este número saltaria para <strong>117 trilhões</strong> de voos possíveis.</p>
+
+    <p>Esses <em>bilhões</em> ou <em>trilhões</em> de registros precisariam estar atualizados constantemente, pois as informações sobre as disponibilidades dos voos mudam a todo momento. Seja simplesmente por causa de vagas indisponíveis ou atrasos.</p>
+
+    <p>Essas informações são "inputadas" segundo a segundo por várias companias aéreas ao redor do mundo e precisam estar disponíveis no menor tempo possíval ao usuário.</p>
+
+    <p>Na prática os aeroportos não possuem conexão com todos os outros, mas se pensamos que é possível haver 2 ou 3 escalas, as possibilidades passam dos bilhões.</p>
+
+    <p>Além disso é possível combinar com outros tipos de transportes, como linhas de ônibus urbanos ou expressos e metrô, havendo também a possibilidade de combinar com as disponibilidades de vagas em hotéis.</p>
+    
+    <hr>
+
+{% endblock %}
+
+
+{% block extrajs %}
+<script src="/static/libs/highlight/9.15.6/highlight.pack.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+{% endblock %}

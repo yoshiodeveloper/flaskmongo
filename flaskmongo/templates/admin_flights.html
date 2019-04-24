@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Voos</h1>
+<p>Altere a disponibilidade dos voos.</p>
+<table class="table table-sm table-hover table-striped">
+    <thead>
+        <tr>
+            <th scope="col">De</th>
+            <th scope="col">Para</th>
+            <th scope="col">Disponível</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for flight in flights %}
+        <tr id="flight_{{flight._id}}_id">
+            <td>{{ flight.from_airport.city }} - {{ flight.from_airport.name }}</td>
+            <td>{{ flight.to_airport.city }} - {{ flight.to_airport.name }}</td>
+            <td><input class="form-check-input position-static" type="checkbox" value="" {% if flight.available %}checked{% endif %} onclick="disable_flight('{{flight._id}}', this);"></td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
