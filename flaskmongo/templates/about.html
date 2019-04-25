@@ -125,8 +125,83 @@
 ]</code></pre>
 
     <p>Esses valores são retornados para a interface onde são exibidos como forma de sugestão. O usuário pode selecionar uma das sugestões ou continuar digitando, neste caso o processo de pesquisa se repete.</p>
+    
+    <p>A seguir há uma versão simplificada do código em Python que realiza esta consulta:</p>
+    
+    <div id="accordion">
+        <div class="card">
+          <div class="card-header" id="headingOne">
+            <h5 class="mb-0">
+              <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                Exibir código
+              </button>
+            </h5>
+          </div>
+      
+          <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-parent="#accordion">
+            <div class="card-body"><pre><code class="python">def prefix_search(query):
 
-</div>
+    query = normalize_text(query)  # Normaliza o texto "inputado" do usuário.
+
+    # O aggregate receberá 4 argumentos.
+    searchables = db.flights.aggregate(
+        # Primeiro argumento: Quais registros devem ser utilizados?
+        {
+            # Este treco é equivalente ao WHERE no SQL.
+            '$match': {
+                'from_airport.searchable': {  # Primeira condição
+                    '$regex': '^%s.*$' % (query), # Monta uma expressão regular. Equivalente ao "LIKE 'texto%'" no SQL.
+                    '$options': 's'  # A flag 's' (Dot-All) indica que o "." da expressão regular significa "qualquer caracter".
+                },
+                'available': True  # Segunda condição. Equivalente ao "available = true" no SQL.
+            }
+        },
+        # Segundo argumento: Qual campo será agregado (extraído os valores únicos)?
+        {
+            '$group': {
+                '_id': '$from_airport.searchable'  # valores que devem ser aggregados (únicos)
+            }
+        },
+        # Terceiro argumento: Como serão ordenados os registros?
+        {
+            '$sort' : {
+                'from_airport.searchable': 1  # O 1 indica que deve ser ordenado de forma ascendente.
+            }
+        },
+        # Quarto argumento: Quantos registros serão retornados?
+        {
+            '$limit': 10
+        }
+    )
+
+    # Quebra os valores do `searchables` no ";" e extraí os IDs dos aeroportos.
+    aiports_ids = [s['_id'].split(';')[-1] for s in searchables]
+
+    # Outra forma de gerar a lista aiports_ids:
+    # aiports_ids = []
+    # for searchable in flights:
+    #     parts = searchable.split(';')  # O split está quebrando texto no ";" gerando uma lista com 2 itens.
+    #     airport_id = parts[-1]  # Pega apenas a última parte da lista "parts", que é o ID do aeroporto.
+    #     aiports_ids.append(airport_id)
+
+    suggestions = []
+
+    if aiports_ids:
+    
+        # Consulta pelos IDs dos aeroportos na collection airports.
+        airports = db.airports.find({'_id': {'$in': aiports_ids}})
+        
+        for airport in airports:
+        
+            # Adiciona dentro de suggestions as sugestões formatadas como "Cidade - Nome do aeroporto".
+            suggestions.append('%s - %s' %(airport['city'], airport['name']))
+
+    return suggestions</pre></code></div>
+            </div>
+        </div>
+    </div>
+    
+    <hr>
 
     <h4>Índices em <code>searchable</code></h4>
 
@@ -201,6 +276,7 @@
 
     <br>
     <br>
+</div>
 {% endblock %}
 
 
