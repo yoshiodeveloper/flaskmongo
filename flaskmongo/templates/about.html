@@ -10,9 +10,9 @@
 
 <div class="mt-3">
 
-    <p>A tela principal permite buscar por voos disponíveis utilizando dois campos digitável "De" e "Para".
-        Conforme o usuário digita nos campos um sistema de sugestão exibe os voos/conexões disponíveis em tempo real.
-        Caso um voo não sejá sugerido significa que ele não está disponível.</p>
+    <p>A tela principal permite buscar por voos disponíveis utilizando dois campos digitáveis "De" e "Para".
+        Conforme o usuário digita nos campos, um sistema de sugestão exibe os voos/conexões disponíveis em tempo real.
+        Caso um voo não seja sugerido significa que ele não está disponível.</p>
 
     <p>Para a simulação foram utilizados 29 aeroportos selecionados com base na importância nacional e internacional.
         Foi definido para o trabalho que todos esses aeroportos possuem conexões com todos os outros, independente se existem ou não de fato essas conexões.
@@ -57,7 +57,7 @@
 
     <p>A collection "flights" contém as conexões possíveis entre os aeroportos e se estão disponíveis no momento.</p>
     
-    <p>Exemplo de um registro de "flights" que representa a conexão a partir de Congonhas até Santos Dumont:</p>
+    <p>Exemplo de um registro de "flights" que representa uma conexão a partir de Congonhas até Santos Dumont:</p>
     
 <pre><code class="javascript">{
     "_id": ObjectId("507f191e810c19729de860ea"),  // ID único gerado pelo mongo.
@@ -89,11 +89,11 @@
 
     <h4>Campo <code>searchable</code></h4>
     
-    <p>Este é o campo mais importante do sistema e é utilizado para realizar as sugestões de voos. Ele é gerado com base no nome da cidade e do aeroporto. Para otimizar as buscas este texto é "normalizado", onde são removidos os acentos de depois convertidos para  minúsculas.</p>
+    <p>Este é o campo mais importante do sistema e é utilizado para realizar as sugestões de voos. Ele é gerado com base no nome da cidade e do aeroporto. Para otimizar as buscas este texto é "normalizado", onde são removidos os acentos e depois convertidos para  minúsculas.</p>
 
     <p>Quando o usuário digita uma letra no campo "De" é feito um consulta por "prefixo" no campo <code>from_airport.searchable</code>. Também é indicado que o campo <code>available</code> deve possuir o valor <code>true</code>.</p>
 
-    <p>Por exemplo, se a letra digitada for "s" o sistema realiza uma busca como "s*" neste campo. É informado ao MongoDB que obrigatoriamente deve começar com a letra "s". Outro ponto importante é que o texto pesquisado pelo usupario também passa pelo processo de normalização antes da pesquisa.</p>
+    <p>Por exemplo, se a letra digitada for "s" o sistema realiza uma busca como "s*" neste campo. É informado ao MongoDB que obrigatoriamente deve começar com a letra "s". Outro ponto importante é que o texto pesquisado pelo usuário também passa pelo processo de normalização antes da pesquisa.</p>
 
     <p>O MongoDB retorna todos os registros de <code>flights</code> com essas condições. Agora é necessário realizar uma segunda operação no MongoDB chamado de <a href="https://docs.mongodb.com/manual/aggregation/">aggregation</a>.</p>
 
@@ -124,7 +124,7 @@
     "Singapore - Singapore Changi Airport"
 ]</code></pre>
 
-    <p>Esses valores são retornado para a interface onde são exibidos como forma de sugestão. O usuário pode selecionar uma das sugestões ou continuar digitando, neste caso o processo de pesquisa se repete.</p>
+    <p>Esses valores são retornados para a interface onde são exibidos como forma de sugestão. O usuário pode selecionar uma das sugestões ou continuar digitando, neste caso o processo de pesquisa se repete.</p>
 
 </div>
 
@@ -134,7 +134,7 @@
 
     <p>As consultas por prefixos textuais conseguem fazer uso de índices no MongoDB, diminuindo drasticamente o tempo das consultas.</p>
 
-    <p>Neste tipo de consulta o valor pesquisado deve se encontrado no começo do valor do campo. Nunca no meio ou no final.</p>
+    <p class="alert alert-info">Neste tipo de consulta o valor pesquisado deve ser encontrado no começo do valor do campo. Nunca no meio ou no final.</p>
 
     <p>Exemplos:</p>
 
@@ -175,7 +175,7 @@
         </tbody>
     </table>
 
-    <p>É extremamente importante entender como utilizar esta estratégia, principalmente no âmbito do Big Data. Uma consulta + índices mal projetados podem inviabilizar esta solução ou até mesmo derrubar um "cluster" de MongoDB.</p>
+    <p>É extremamente importante entender como utilizar esta estratégia, principalmente no âmbito do Big Data. Uma consulta + índices mal projetados podem inviabilizar esta solução ou até mesmo "derrubar" um <em>cluster</em> de MongoDB.</p>
 
     <hr>
 
@@ -185,9 +185,9 @@
 
     <p>Esses <em>bilhões</em> ou <em>trilhões</em> de registros precisariam estar atualizados constantemente, pois as informações sobre as disponibilidades dos voos mudam a todo momento. Seja simplesmente por causa de vagas indisponíveis ou atrasos.</p>
 
-    <p>Essas informações são "inputadas" segundo a segundo por várias companias aéreas ao redor do mundo e precisam estar disponíveis no menor tempo possíval ao usuário.</p>
+    <p>Essas informações são "inputadas" segundo a segundo por várias companias aéreas ao redor do mundo e precisam estar disponíveis no menor tempo possível ao usuário.</p>
 
-    <p>Na prática os aeroportos não possuem conexão com todos os outros, mas se pensamos que é possível haver 2 ou 3 escalas, as possibilidades passam dos bilhões.</p>
+    <p>Na prática os aeroportos não possuem conexões com todos os outros, mas se pensarmos que é possível haver 2 ou 3 escalas, as possibilidades passam dos bilhões.</p>
 
     <p>Além disso é possível combinar com outros tipos de transportes, como linhas de ônibus urbanos ou expressos e metrô, havendo também a possibilidade de combinar com as disponibilidades de vagas em hotéis.</p>
     
